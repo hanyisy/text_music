@@ -6,12 +6,16 @@
   --color-surface: #13161E;            /* 악보 영역, 패널 */
   --color-surface-sunken: #0B0D12;     /* 입력창 */
   --color-surface-hover: #1C2029;
+  --color-surface-active: #262B36;     /* 켜진 버튼 */
   --color-border: #2F3542;
   --color-border-subtle: #232834;
+  --color-border-dashed: #3A4050;      /* 메타 칸 표시 */
+  --color-key-border: #262B36;         /* 음 배치 표의 칸 */
 
   /* 색: 글자 */
   --color-text: #ECE7DC;
   --color-text-muted: #9AA0AE;
+  --color-text-soft: #C9CCD4;          /* 규칙 설명 */
   --color-text-faint: #6B7180;         /* 박 기호, 자리 표시 글자 */
   --color-ghost: #262B36;              /* 빈 화면의 큰 글자 */
 
@@ -35,6 +39,8 @@
   --font-size-small: 0.8125rem;
   --font-size-caption: 0.75rem;
   --font-size-badge: 0.6875rem;
+  --font-size-key: 1.125rem;           /* 음 배치 표의 자모 */
+  --font-size-key-name: 0.625rem;
   --font-size-glyph: clamp(1.75rem, 7vw, 2.75rem);   /* 괴문자 */
   --font-size-ghost: 7.5rem;
   --font-weight-regular: 400;
@@ -74,11 +80,19 @@
   --score-empty-min-height: 12.5rem;
   --textarea-min-height: 7rem;
   --textarea-small-min-height: 5rem;
+  --key-height: 3.5rem;
+  --keymap-min-width: 40rem;
+  --keymap-label-width: 4rem;
+  --keymap-extra-key-width: 6rem;
+  --tempo-value-width: 4.75rem;
+  --cheat-key-width: 3.5rem;
+  --cheat-column-min: 12.5rem;
 
   /* 움직임 */
   --duration-highlight: 0.06s;
   --duration-flash: 0.28s;
   --duration-code: 0.15s;
+  --duration-key: 0.08s;
 }
 
 *,
@@ -117,9 +131,23 @@ p {
 /* ── 머리말 ─────────────────────────────────────────── */
 .header {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-8) 0 var(--space-1);
+}
+
+.header__text {
+  display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-8) 0 var(--space-1);
+}
+
+.header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .header__row {
@@ -286,6 +314,54 @@ p {
   opacity: 1;
 }
 
+/* 규칙 보기를 켜면 코드와 메타 칸을 제자리에 드러낸다 */
+.score--codes .tok-code {
+  position: static;
+  width: auto;
+  margin: 0 0.3em;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  line-height: 1;
+  vertical-align: middle;
+  opacity: 1;
+}
+
+.tok-meta,
+.score__line--quiet {
+  display: none;
+}
+
+.score--codes .score__line--quiet {
+  display: block;
+}
+
+.score--codes .tok-meta {
+  display: inline-block;
+  margin-right: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) dashed var(--color-border-dashed);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* 펼쳐보기: 괴문자를 자모로 풀어 작게 */
+.tok--expanded {
+  margin-right: 0.4em;
+  padding: 0.05em 0.3em;
+  border: var(--border-width) solid var(--color-border);
+  font-family: var(--font-sans);
+  font-size: 0.48em;
+  letter-spacing: 0.06em;
+  vertical-align: 0.3em;
+}
+
 .tok-lyric {
   display: block;
   color: var(--color-text-muted);
@@ -381,6 +457,11 @@ p {
   outline-offset: var(--focus-width);
 }
 
+.button[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-surface-active);
+}
+
 .button--primary {
   padding: 0 var(--space-6);
   border-color: var(--color-accent);
@@ -433,6 +514,138 @@ p {
 .share__message {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
+}
+
+/* ── 규칙과 설정 ────────────────────────────────────── */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.rules__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rules__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.rules__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rules__value {
+  min-width: var(--tempo-value-width);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+}
+
+.keymap {
+  overflow-x: auto;
+}
+
+.keymap__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: var(--keymap-min-width);
+}
+
+.keymap__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.keymap__label {
+  flex: none;
+  width: var(--keymap-label-width);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.keymap__keys {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.keymap__keys--extra {
+  flex: none;
+  grid-template-columns: repeat(2, var(--keymap-extra-key-width));
+}
+
+.keymap__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: var(--key-height);
+  border: var(--border-width) solid var(--color-key-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+  font-size: var(--font-size-key);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.3;
+  transition: background-color var(--duration-key);
+}
+
+.keymap__cell--black {
+  background: var(--color-surface-sunken);
+}
+
+.keymap__name {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-key-name);
+  font-weight: var(--font-weight-medium);
+}
+
+.keymap__cell.is-lit {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.keymap__cell.is-lit .keymap__name {
+  color: var(--color-on-accent);
+}
+
+.cheats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--cheat-column-min), 100%), 1fr));
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: var(--font-size-small);
+}
+
+.cheats__item {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.cheats dt {
+  flex: none;
+  min-width: var(--cheat-key-width);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+}
+
+.cheats dd {
+  margin: 0;
 }
 
 /* ── 꼬리말 ─────────────────────────────────────────── */

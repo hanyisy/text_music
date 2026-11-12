@@ -84,7 +84,10 @@ export function tokenize(text) {
       const close = text.indexOf('}', i);
       const lineEnd = text.indexOf('\n', i);
       if (close === -1 || (lineEnd !== -1 && lineEnd < close)) {
-        push(TOKEN.UNKNOWN, i, ++i);
+        // 아직 닫지 않은 메타 칸: 줄 끝까지 메타로 본다(제목을 치는 동안 소리가 나지 않게).
+        const end = lineEnd === -1 ? text.length : lineEnd;
+        push(TOKEN.META, i, end, { meta: { kind: 'open' } });
+        i = end;
       } else {
         push(TOKEN.META, i, close + 1, { meta: classifyMeta(text.slice(i + 1, close)) });
         i = close + 1;
@@ -110,6 +113,31 @@ export function tokenize(text) {
     }
   }
   return tokens;
+}
+
+/**
+ * 악보에서 실제로 소리가 나는 자모만 순서대로. 메타 칸({제목} 등)과 가사 줄의 글자는 빠진다.
+ * 입력 중 "방금 친 음"을 찾을 때 쓴다.
+ */
+export function scoreJamo(text) {
+  const out = [];
+  for (const token of tokenize(text)) {
+    if (token.type === TOKEN.GLYPH) out.push(...token.jamo);
+  }
+  return out;
+}
+
+const LEADING_META = /^(?:\s*\{[^}\n]*\})*/;
+const TEMPO_META = /\{\d+\}/;
+
+/**
+ * 맨 앞 메타 칸의 템포를 바꾼 악보 텍스트를 돌려준다. {템포}가 없으면 맨 앞 메타 칸들 뒤에 넣는다.
+ */
+export function withTempo(text, tempo) {
+  const head = LEADING_META.exec(text)[0];
+  const meta = `{${tempo}}`;
+  const nextHead = TEMPO_META.test(head) ? head.replace(TEMPO_META, meta) : head + meta;
+  return nextHead + text.slice(head.length);
 }
 
 /**

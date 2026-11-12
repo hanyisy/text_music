@@ -1,8 +1,9 @@
 // 입력 텍스트 변화에서 "방금 친 자모"를 찾는다.
 // 두벌식은 누른 순서 = 자모 순서라서, 텍스트를 자모로 풀어 이전 상태와 비교하면
 // 도깨비불(각 + ㅏ → 가가)도 ㅏ 하나 추가로 잡힌다.
+// 소리가 나지 않는 글자(메타 칸, 가사 줄)는 처음부터 비교 대상에서 뺀다.
 
-import { textToJamo } from './hangul.js';
+import { scoreJamo } from './parser.js';
 
 /** 두 자모 목록의 공통 앞·뒤를 걷어내고 바뀐 가운데만 돌려준다. */
 export function diffJamo(prev, next) {
@@ -19,7 +20,7 @@ export function diffJamo(prev, next) {
 
 /** 이전 텍스트 → 다음 텍스트에서 새로 추가된 자모 목록. */
 export function addedJamo(prevText, nextText) {
-  return diffJamo(textToJamo(prevText), textToJamo(nextText)).added;
+  return diffJamo(scoreJamo(prevText), scoreJamo(nextText)).added;
 }
 
 // 입력기가 글자를 확정하면서 잠깐 받침을 뺐다가(각 → 가) 곧바로 다시 넣는(가 → 가가)
@@ -35,12 +36,12 @@ export class JamoTracker {
   #removedAt = 0;
 
   constructor(text = '') {
-    this.#jamo = textToJamo(text);
+    this.#jamo = scoreJamo(text);
   }
 
   /** 소리 없이 현재 상태만 맞춘다 (불러오기, 붙여넣기 등). */
   reset(text) {
-    this.#jamo = textToJamo(text);
+    this.#jamo = scoreJamo(text);
     this.#removed = null;
   }
 
@@ -50,7 +51,7 @@ export class JamoTracker {
    * @returns {string[]}   방금 친 자모
    */
   update(text, now = 0) {
-    const next = textToJamo(text);
+    const next = scoreJamo(text);
     const { added, removed } = diffJamo(this.#jamo, next);
     this.#jamo = next;
 

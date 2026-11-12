@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { charToJamo, textToJamo, composeJamo, convertLatin } from '../engine/hangul.js';
-import { jamoToSound } from '../engine/keymap.js';
+import { jamoToSound, KEY_LAYOUT } from '../engine/keymap.js';
 import { addedJamo, JamoTracker } from '../engine/diff.js';
-import { parse, tokenize, TOKEN } from '../engine/parser.js';
+import { parse, tokenize, withTempo, TOKEN } from '../engine/parser.js';
 
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} ≉ ${expected}`);
 
@@ -74,6 +74,12 @@ test('keymap: 모음 = C4~B4, 자음 = C3~B3, 쌍자음은 기본 자모와 같�
   assert.equal(jamoToSound('a'), null);
 });
 
+test('keymap: 음 배치 표는 도부터 반음 순서', () => {
+  assert.equal(KEY_LAYOUT.melody.join(''), 'ㅗㅛㅓㅕㅏㅣㅑㅠㅐㅜㅔㅡ');
+  assert.equal(KEY_LAYOUT.accomp.join(''), 'ㅁㅂㄴㅈㅇㄹㄷㅎㄱㅋㅅㅌ');
+  assert.deepEqual(KEY_LAYOUT.percussion.map((p) => p.jamo), ['ㅊ', 'ㅍ']);
+});
+
 // ── diff ────────────────────────────────────────────────
 
 test('diff: "각" → "가가" 추가 자모 = [ㅏ] (도깨비불)', () => {
@@ -88,6 +94,14 @@ test('diff: 지우기·기호 입력은 음 없음, 가운데 입력은 그 자�
   assert.deepEqual(addedJamo('가나', '가'), []);
   assert.deepEqual(addedJamo('가', '가1'), []);
   assert.deepEqual(addedJamo('가다', '가나다'), ['ㄴ', 'ㅏ']);
+});
+
+test('diff: 메타 칸(제목)과 가사 줄을 치는 동안은 음 없음', () => {
+  assert.deepEqual(addedJamo('{작', '{작으'), []);
+  assert.deepEqual(addedJamo('{작은별', '{작은별}'), []);
+  assert.deepEqual(addedJamo('{작은별}', '{작은별}가'), ['ㄱ', 'ㅏ']);
+  assert.deepEqual(addedJamo('가\n;반', '가\n;반짝'), []);
+  assert.deepEqual(addedJamo('가\n;반짝\n', '가\n;반짝\n나'), ['ㄴ', 'ㅏ']);
 });
 
 test('JamoTracker: 입력기가 받침을 잠깐 뺐다 넣어도 ㅏ 하나만', () => {
@@ -162,6 +176,19 @@ test('parser: 제목과 글자 수', () => {
   assert.equal(score.glyphCount, 3);
   assert.equal(score.events.length, 7);
   assert.equal(parse('가').title, '');
+});
+
+test('parser: 닫지 않은 { 는 줄 끝까지 메타 칸', () => {
+  near(parse('가{작은\n나').duration, 1);
+  assert.equal(parse('{작은').events.length, 0);
+});
+
+test('withTempo: 맨 앞 템포를 바꾸거나 넣는다', () => {
+  assert.equal(withTempo('{120}가', 100), '{100}가');
+  assert.equal(withTempo('{작은별}{120}{4/4}\n가', 90), '{작은별}{90}{4/4}\n가');
+  assert.equal(withTempo('{작은별}\n가', 90), '{작은별}{90}\n가');
+  assert.equal(withTempo('가{80}나', 90), '{90}가{80}나');
+  assert.equal(parse(withTempo('가나', 60)).tempo, 60);
 });
 
 test('parser: 공백·줄바꿈·마디선은 시간 없음, 미구현 표기는 오류 없이 건너뜀', () => {

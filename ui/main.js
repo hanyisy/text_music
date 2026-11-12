@@ -1,11 +1,12 @@
 // 화면 조립: 입력창 ↔ 엔진 ↔ 오디오 ↔ 악보 표시를 잇는다.
 
-import { parse } from '../engine/parser.js';
+import { parse, withTempo } from '../engine/parser.js';
 import { jamoToSound } from '../engine/keymap.js';
 import { Synth } from '../audio/synth.js';
 import { Player } from '../audio/player.js';
 import { Editor } from './editor.js';
 import { ScoreView } from './score-view.js';
+import { KeymapView } from './keymap-view.js';
 import { copyText } from './clipboard.js';
 import { isIOS } from './platform.js';
 import { LONG_LINK_LENGTH, buildLink, decode, encodePlain, encodeShortest, readHashCode } from './share.js';
@@ -20,6 +21,7 @@ const stopButton = $('stop');
 
 const synth = new Synth();
 const player = new Player(synth);
+const keymapView = new KeymapView($('keymap'));
 const scoreView = new ScoreView({ lines: $('score-lines'), empty: $('score-empty'), title: $('score-title') });
 
 // ── 소리 켜기 ───────────────────────────────────────────
@@ -29,7 +31,16 @@ for (const type of ['pointerdown', 'touchend', 'keydown']) {
 }
 
 // ── 입력창 ──────────────────────────────────────────────
+const TEMPO_STEP = 10;
+const TEMPO_BUTTON_MIN = 40;
+const TEMPO_BUTTON_MAX = 240;
+
 let score = parse('');
+let expanded = false;   // 펼쳐보기
+
+function renderScore() {
+  scoreView.render(editor.text, score.title, { expanded });
+}
 
 const editor = new Editor({
   input: $('score-input'),
@@ -37,7 +48,8 @@ const editor = new Editor({
     const hadNotes = score.events.length > 0;
     player.stop();
     score = parse(text);
-    scoreView.render(text, score.title);
+    renderScore();
+    $('tempo').textContent = `${score.tempo} BPM`;
     $('stats').textContent = score.glyphCount
       ? `음 ${score.events.length}개 · ${score.glyphCount}글자 · ${score.tempo} BPM`
       : `${score.tempo} BPM`;
@@ -46,6 +58,7 @@ const editor = new Editor({
   },
   onJamo(jamo, caret) {
     for (const one of jamo) synth.play(jamoToSound(one));
+    keymapView.light(jamo.at(-1));
     scoreView.flash(caret - 1);
     $('notice-link').hidden = true;
   },
@@ -159,6 +172,27 @@ bindButton($('clear'), () => {
   $('share').hidden = true;
   $('notice-link').hidden = true;
 });
+bindButton($('tempo-down'), () => load(withTempo(editor.text, Math.max(TEMPO_BUTTON_MIN, score.tempo - TEMPO_STEP))));
+bindButton($('tempo-up'), () => load(withTempo(editor.text, Math.min(TEMPO_BUTTON_MAX, score.tempo + TEMPO_STEP))));
+
+// 켜고 끄는 버튼
+function bindToggle(button, apply) {
+  bindButton(button, () => {
+    const on = button.getAttribute('aria-pressed') !== 'true';
+    button.setAttribute('aria-pressed', String(on));
+    apply(on);
+  });
+}
+
+bindToggle($('toggle-expand'), (on) => {
+  expanded = on;
+  renderScore();
+});
+bindToggle($('toggle-rules'), (on) => {
+  $('rules').hidden = !on;
+  $('score').classList.toggle('score--codes', on);
+});
+
 bindButton($('share-close'), () => { $('share').hidden = true; });
 $('share-value').addEventListener('focus', (event) => event.target.select());
 

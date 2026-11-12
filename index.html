@@ -14,17 +14,24 @@
 <body>
   <main class="app">
     <header class="header">
-      <div class="header__row">
-        <h1 class="header__title">외계어 악보</h1>
-        <span class="badge">PROTOTYPE 1</span>
+      <div class="header__text">
+        <div class="header__row">
+          <h1 class="header__title">외계어 악보</h1>
+          <span class="badge">PROTOTYPE 1</span>
+        </div>
+        <p class="header__lead">치면 소리가 나고, 찍힌 글자를 그대로 따라 치면 같은 곡이 나와요.</p>
       </div>
-      <p class="header__lead">치면 소리가 나고, 찍힌 글자를 그대로 따라 치면 같은 곡이 나와요.</p>
+      <div class="header__actions">
+        <button class="button" id="toggle-expand" type="button" aria-pressed="false"
+          title="눈 아프면 펼쳐보기 — 괴문자를 자모 단위로 풀어서 보여줘요">펼쳐보기</button>
+        <button class="button" id="toggle-rules" type="button" aria-pressed="false">규칙 보기</button>
+      </div>
     </header>
 
     <p class="notice notice--accent" id="notice-link" role="status" hidden></p>
     <p class="notice" id="notice-ios" hidden>소리가 안 나면 아이폰 옆면의 무음 모드를 확인해주세요.</p>
 
-    <section class="score" aria-label="괴문자 악보">
+    <section class="score" id="score" aria-label="괴문자 악보">
       <div class="score__title" id="score-title" hidden></div>
       <div class="score__empty" id="score-empty">
         <div class="score__ghost" aria-hidden="true">쀎</div>
@@ -65,6 +72,33 @@
       </div>
       <p class="share__message" id="share-message" role="status"></p>
       <textarea class="textarea textarea--small" id="share-value" rows="3" readonly aria-label="공유할 내용"></textarea>
+    </section>
+
+    <section class="rules" id="rules" aria-label="규칙과 설정" hidden>
+      <div class="rules__group">
+        <span class="rules__label">템포 &middot; 한 글자가 한 박이에요</span>
+        <div class="rules__row">
+          <button class="button button--chip" id="tempo-down" type="button" aria-label="템포 10 내리기" title="맨 앞 {템포} 값을 바꿔요">&minus;</button>
+          <span class="rules__value" id="tempo"></span>
+          <button class="button button--chip" id="tempo-up" type="button" aria-label="템포 10 올리기" title="맨 앞 {템포} 값을 바꿔요">+</button>
+        </div>
+      </div>
+
+      <div class="rules__group">
+        <span class="rules__label">음 배치 &mdash; 모음은 멜로디, 자음은 한 옥타브 아래 반주예요. 어두운 칸은 검은건반이에요. Shift를 눌러도 같은 음이에요.</span>
+        <div class="keymap">
+          <div class="keymap__inner" id="keymap"></div>
+        </div>
+      </div>
+
+      <dl class="cheats">
+        <div class="cheats__item"><dt>-</dt><dd>늘임 (한 박 더)</dd></div>
+        <div class="cheats__item"><dt>,</dt><dd>쉼표 (한 박 쉼)</dd></div>
+        <div class="cheats__item"><dt>|</dt><dd>마디 (보기용)</dd></div>
+        <div class="cheats__item"><dt>{120}</dt><dd>맨 앞: 템포</dd></div>
+        <div class="cheats__item"><dt>{작은별}</dt><dd>곡 제목</dd></div>
+        <div class="cheats__item"><dt>가 &rarr; ㄱㅏ</dt><dd>한 글자 안의 음은 박을 똑같이 나눠요</dd></div>
+      </dl>
     </section>
 
     <footer class="footer">

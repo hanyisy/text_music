@@ -1,5 +1,6 @@
 // 악보 표시 영역. 입력창의 텍스트를 토큰 단위로 그려서
 // 괴문자는 크게, 박 기호는 작게, 숫자·기호 코드와 메타 칸은 숨겨서 보여준다.
+// (숨긴 것은 "규칙 보기"를 켜면 CSS가 드러낸다.)
 // 텍스트는 그대로, 보여주는 방식만 여기서 정한다.
 
 import { TOKEN, tokenize } from '../engine/parser.js';
@@ -39,8 +40,10 @@ export class ScoreView {
   /**
    * @param {string} text   악보 텍스트
    * @param {string} title  곡 제목(없으면 빈 문자열)
+   * @param {object} [options]
+   * @param {boolean} [options.expanded]  펼쳐보기: 괴문자를 자모 단위로 풀어서 보여준다
    */
-  render(text, title) {
+  render(text, title, { expanded = false } = {}) {
     this.#byStart.clear();
     this.#active = null;
 
@@ -48,7 +51,7 @@ export class ScoreView {
     let row = null;
     let code = null;    // 이어진 코드(예: !1^2)는 한 덩어리로
     const newRow = () => {
-      row = { el: document.createElement('div'), visible: false };
+      row = { el: document.createElement('div'), visible: false, quiet: false };
       row.el.className = 'score__line';
       rows.push(row);
       code = null;
@@ -65,12 +68,15 @@ export class ScoreView {
       if (CODE.has(token.type)) {
         if (code) code.textContent += source;
         else row.el.append((code = span('tok-code', source)));
+        row.quiet = true;
         continue;
       }
       code = null;
 
       if (token.type === TOKEN.GLYPH || RHYTHM.has(token.type)) {
-        const el = span(token.type === TOKEN.GLYPH ? 'tok tok--note' : 'tok tok--rhythm', source);
+        const el = token.type !== TOKEN.GLYPH ? span('tok tok--rhythm', source)
+          : expanded ? span('tok tok--note tok--expanded', token.jamo.join(''))
+            : span('tok tok--note', source);
         this.#byStart.set(token.start, el);
         row.el.append(el);
         row.visible = true;
@@ -83,11 +89,15 @@ export class ScoreView {
       } else if (token.type === TOKEN.UNKNOWN) {
         row.el.append(span('tok tok--other', source));
         row.visible = true;
+      } else if (token.type === TOKEN.META) {
+        row.el.append(span('tok-meta', source));
+        row.quiet = true;
       }
-      // META는 연주되지 않는 칸이라 그리지 않는다(제목만 위에 따로 표시).
     }
 
-    this.#lines.replaceChildren(...rows.filter((r) => r.visible).map((r) => r.el));
+    // 코드·메타 칸만 있는 줄은 평소엔 줄째로 숨긴다.
+    for (const r of rows) if (!r.visible) r.el.classList.add('score__line--quiet');
+    this.#lines.replaceChildren(...rows.filter((r) => r.visible || r.quiet).map((r) => r.el));
     this.#empty.hidden = text.trim() !== '';
     this.#title.hidden = !title;
     this.#title.textContent = title;

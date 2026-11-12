@@ -23,6 +23,20 @@ const ALIAS = {
   ㅃ: 'ㅂ', ㅉ: 'ㅈ', ㄸ: 'ㄷ', ㄲ: 'ㄱ', ㅆ: 'ㅅ', ㅒ: 'ㅐ', ㅖ: 'ㅔ',
 };
 
+const bySemitone = (map) => Object.keys(map).sort((a, b) => map[a] - map[b]);
+
+/** 화면의 음 배치 표용: 반음 순서(도부터)대로의 자모. */
+export const KEY_LAYOUT = Object.freeze({
+  melody: bySemitone(MELODY),
+  accomp: bySemitone(ACCOMP),
+  percussion: Object.entries(PERCUSSION).map(([jamo, name]) => ({ jamo, name })),
+});
+
+/** 같은 음을 내는 기본 자모 (ㅃ → ㅂ, ㅖ → ㅔ). */
+export function baseJamo(jamo) {
+  return ALIAS[jamo] ?? jamo;
+}
+
 /**
  * 자모 하나 → 소리.
  * 겹자모(ㅘ ㄼ 등)는 hangul.js에서 미리 분해해서 넘겨야 한다.
@@ -32,7 +46,7 @@ const ALIAS = {
  *         | null}
  */
 export function jamoToSound(jamo) {
-  const key = ALIAS[jamo] ?? jamo;
+  const key = baseJamo(jamo);
   if (key in MELODY) return { type: 'note', midi: MELODY_BASE + MELODY[key], voice: 'melody' };
   if (key in ACCOMP) return { type: 'note', midi: ACCOMP_BASE + ACCOMP[key], voice: 'accomp' };
   if (key in PERCUSSION) return { type: 'perc', name: PERCUSSION[key] };

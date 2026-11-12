@@ -76,7 +76,8 @@ export class Editor {
     }
 
     let jamo = [];
-    if (SILENT_INPUT_TYPES.has(inputType)) this.#tracker.reset(heard);
+    // 지우기는 음이 아니다({ 를 지워 제목이 음표로 바뀌는 경우 포함).
+    if (SILENT_INPUT_TYPES.has(inputType) || inputType?.startsWith('delete')) this.#tracker.reset(heard);
     else jamo = this.#tracker.update(heard, performance.now());
 
     if (text !== this.#lastText) {
