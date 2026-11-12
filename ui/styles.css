@@ -1,44 +1,84 @@
-/* 디자인 값은 전부 여기 변수로. 아래 규칙에는 값을 직접 쓰지 않는다. */
+/* 디자인 값은 전부 여기 변수로. 아래 규칙에는 값을 직접 쓰지 않는다.
+   출처: Claude 디자인 캔버스 "외계어 악보 — 1단계 프로토타입" */
 :root {
-  /* 색 */
-  --color-bg: #ffffff;
-  --color-text: #111111;
-  --color-text-muted: #666666;
-  --color-border: #cccccc;
-  --color-focus: #111111;
-  --color-surface: #ffffff;
-  --color-button-bg: #ffffff;
-  --color-button-text: #111111;
-  --color-button-primary-bg: #111111;
-  --color-button-primary-text: #ffffff;
-  --color-highlight: #ffe066;       /* 지금 재생 중인 글자 배경 */
+  /* 색: 바탕 */
+  --color-bg: #0F1117;
+  --color-surface: #13161E;            /* 악보 영역, 패널 */
+  --color-surface-sunken: #0B0D12;     /* 입력창 */
+  --color-surface-hover: #1C2029;
+  --color-border: #2F3542;
+  --color-border-subtle: #232834;
+
+  /* 색: 글자 */
+  --color-text: #ECE7DC;
+  --color-text-muted: #9AA0AE;
+  --color-text-faint: #6B7180;         /* 박 기호, 자리 표시 글자 */
+  --color-ghost: #262B36;              /* 빈 화면의 큰 글자 */
+
+  /* 색: 강조 */
+  --color-accent: #FFD95A;             /* 주 버튼, 지금 재생 중인 글자 배경, 포커스 */
+  --color-accent-hover: #FFE587;
+  --color-on-accent: #15130A;
+  --color-notice-accent-bg: #1A1810;
+  --color-notice-accent-border: #3A3420;
+  --color-notice-accent-text: #FFE587;
 
   /* 글꼴 */
-  --font-family-base: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --font-family-score: var(--font-family-base);
-  --font-size-base: 1rem;
-  --font-size-small: 0.875rem;
-  --font-size-title: 1.25rem;
-  --font-size-score: 1.75rem;       /* 16px 미만이면 아이폰이 입력 시 화면을 확대한다 */
-  --font-weight-title: 700;
-  --line-height-base: 1.5;
-  --line-height-score: 1.6;
-  --letter-spacing-score: 0.05em;
+  --font-sans: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-serif: 'Noto Serif KR', 'AppleMyungjo', 'Batang', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-size-title: 1.75rem;
+  --font-size-input: 1.125rem;         /* 16px 미만이면 아이폰이 입력 시 화면을 확대한다 */
+  --font-size-hint: 1rem;
+  --font-size-lyric: 0.9375rem;
+  --font-size-body: 0.875rem;
+  --font-size-small: 0.8125rem;
+  --font-size-caption: 0.75rem;
+  --font-size-badge: 0.6875rem;
+  --font-size-glyph: clamp(1.75rem, 7vw, 2.75rem);   /* 괴문자 */
+  --font-size-ghost: 7.5rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+  --line-height-base: 1.6;
+  --line-height-glyph: 1.75;
+  --letter-spacing-title: -0.02em;
+  --letter-spacing-label: 0.04em;
 
   /* 간격 */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
+  --space-5: 1.25rem;
   --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-9: 2.25rem;
+  --space-10: 2.5rem;
+  --space-14: 3.5rem;
+  --space-18: 4.5rem;
 
   /* 모양 */
-  --page-max-width: 40rem;
-  --radius: 0.5rem;
+  --page-max-width: 65rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-pill: 999px;
   --border-width: 1px;
   --focus-width: 2px;
-  --button-min-height: 2.75rem;     /* 손가락으로 누르기 충분한 크기 */
-  --editor-min-height: 8rem;
+  --control-height: 2.75rem;           /* 손가락으로 누르기 충분한 크기(44px) */
+  --icon-size: 0.875rem;
+  --score-min-height: 17.5rem;
+  --score-empty-min-height: 12.5rem;
+  --textarea-min-height: 7rem;
+  --textarea-small-min-height: 5rem;
+
+  /* 움직임 */
+  --duration-highlight: 0.06s;
+  --duration-flash: 0.28s;
+  --duration-code: 0.15s;
 }
 
 *,
@@ -55,121 +95,362 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: var(--font-family-base);
-  font-size: var(--font-size-base);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
   line-height: var(--line-height-base);
 }
 
-.app {
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-  padding: var(--space-4);
-}
-
-.app__title {
-  margin: 0 0 var(--space-4);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-title);
-}
-
-/* 입력창: 표시 레이어(backdrop) 위에 투명 배경의 textarea를 정확히 겹친다.
-   두 요소의 글꼴·여백·줄바꿈 규칙이 같아야 하이라이트 위치가 맞는다. */
-.editor {
-  position: relative;
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-}
-
-.editor:focus-within {
-  outline: var(--focus-width) solid var(--color-focus);
-  outline-offset: calc(var(--focus-width) * -1);
-}
-
-.editor__backdrop,
-.editor__input {
+p {
   margin: 0;
-  padding: var(--space-3);
-  border: 0;
-  font-family: var(--font-family-score);
-  font-size: var(--font-size-score);
-  line-height: var(--line-height-score);
-  letter-spacing: var(--letter-spacing-score);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-all;
 }
 
-.editor__backdrop {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  color: transparent;
-  pointer-events: none;
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: var(--page-max-width);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 0 var(--space-8) var(--space-18);
 }
 
-.editor__backdrop mark {
-  background: var(--color-highlight);
-  color: transparent;
-  border-radius: var(--space-1);
+/* ── 머리말 ─────────────────────────────────────────── */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-8) 0 var(--space-1);
 }
 
-.editor__input {
-  position: relative;
-  display: block;
-  width: 100%;
-  min-height: var(--editor-min-height);
-  background: transparent;
-  color: var(--color-text);
-  resize: none;
-  overflow: hidden;
-  outline: none;
+.header__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
-.editor__input::placeholder {
+.header__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-black);
+  letter-spacing: var(--letter-spacing-title);
+  line-height: 1.3;
+}
+
+.header__lead {
   color: var(--color-text-muted);
 }
 
+.badge {
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+}
+
+/* ── 안내 ───────────────────────────────────────────── */
+.notice {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.notice--accent {
+  border-color: var(--color-notice-accent-border);
+  background: var(--color-notice-accent-bg);
+  color: var(--color-notice-accent-text);
+}
+
+/* ── 악보 표시 ──────────────────────────────────────── */
+.score {
+  min-height: var(--score-min-height);
+  padding: var(--space-9) var(--space-9) var(--space-10);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  font-family: var(--font-serif);
+  font-size: var(--font-size-glyph);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-glyph);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.score__title {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-label);
+  line-height: var(--line-height-base);
+}
+
+.score__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: var(--score-empty-min-height);
+  text-align: center;
+}
+
+.score__ghost {
+  color: var(--color-ghost);
+  font-size: var(--font-size-ghost);
+  font-weight: var(--font-weight-black);
+  line-height: 1;
+}
+
+.score__hint {
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-hint);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
+}
+
+.score__line {
+  white-space: pre-wrap;
+}
+
+.score__line--lyric {
+  margin: -0.35em 0 0.4em;
+}
+
+/* 토큰: 크기를 em으로 잡아 괴문자 크기를 따라가게 한다 */
+.tok {
+  display: inline-block;
+  padding: 0 0.04em;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-highlight);
+}
+
+.tok--rhythm {
+  padding: 0 0.14em;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.6em;
+  font-weight: var(--font-weight-medium);
+  vertical-align: 0.2em;
+}
+
+.tok--space {
+  width: 0.32em;
+}
+
+.tok--other {
+  color: var(--color-text-faint);
+  font-weight: var(--font-weight-regular);
+}
+
+/* 지금 재생 중인 위치 = 배경 하이라이트 */
+.tok.is-active {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.tok.is-flash {
+  animation: tok-pop var(--duration-flash) ease-out;
+}
+
+@keyframes tok-pop {
+  0% { transform: translateY(-0.12em) scale(1.14); }
+  100% { transform: none; }
+}
+
+/* 숫자·기호 코드: 자리를 차지하지 않고, 악보에 마우스를 올리면 글자 위에 작게 뜬다 */
+.tok-code {
+  position: relative;
+  top: -1.25em;
+  display: inline-block;
+  width: 0;
+  overflow: visible;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-code);
+}
+
+.score:hover .tok-code {
+  opacity: 1;
+}
+
+.tok-lyric {
+  display: block;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-lyric);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.02em;
+  line-height: var(--line-height-base);
+}
+
+/* ── 입력창 ─────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+.textarea {
+  display: block;
+  width: 100%;
+  min-height: var(--textarea-min-height);
+  padding: var(--space-4) var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-input);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-base);
+  resize: vertical;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.textarea::placeholder {
+  color: var(--color-text-faint);
+}
+
+.textarea--small {
+  min-height: var(--textarea-small-min-height);
+  font-size: var(--font-size-body);
+}
+
+/* ── 버튼 ───────────────────────────────────────────── */
 .controls {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.controls__group {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin-left: auto;
 }
 
 .button {
-  min-height: var(--button-min-height);
-  padding: var(--space-2) var(--space-4);
-  background: var(--color-button-bg);
-  color: var(--color-button-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  font: inherit;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
 }
 
-.button--primary {
-  background: var(--color-button-primary-bg);
-  color: var(--color-button-primary-text);
-  border-color: var(--color-button-primary-bg);
+.button:hover {
+  background: var(--color-surface-hover);
 }
 
 .button:focus-visible {
-  outline: var(--focus-width) solid var(--color-focus);
+  outline: var(--focus-width) solid var(--color-accent);
   outline-offset: var(--focus-width);
 }
 
-.status {
-  min-height: calc(var(--font-size-small) * var(--line-height-base));
-  margin: var(--space-3) 0 0;
+.button--primary {
+  padding: 0 var(--space-6);
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.button--primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.button--chip {
+  min-width: var(--control-height);
+  padding: 0 var(--space-3);
   font-size: var(--font-size-small);
 }
 
-.notices {
-  margin: var(--space-6) 0 0;
-  padding: 0;
-  list-style: none;
+.button__icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.stats {
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── 공유 패널 ──────────────────────────────────────── */
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.share__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.share__message {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
+}
+
+/* ── 꼬리말 ─────────────────────────────────────────── */
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 0 var(--space-4) var(--space-14);
+  }
+
+  .score {
+    padding: var(--space-6) var(--space-5);
+  }
 }

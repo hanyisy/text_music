@@ -156,6 +156,14 @@ test('parser: 템포 기본값 120, 맨 앞 {템포}만 적용', () => {
   near(parse('가{60}나').duration, 1); // 중간 템포 변경은 아직 건너뜀
 });
 
+test('parser: 제목과 글자 수', () => {
+  const score = parse('{작은별}{100}{4/4}\n가나,각-');
+  assert.equal(score.title, '작은별');
+  assert.equal(score.glyphCount, 3);
+  assert.equal(score.events.length, 7);
+  assert.equal(parse('가').title, '');
+});
+
 test('parser: 공백·줄바꿈·마디선은 시간 없음, 미구현 표기는 오류 없이 건너뜀', () => {
   near(parse('가 나\n| 다 |').duration, 1.5);
   const score = '{작은별}{120:8}{4/4}\n{트랙1}\n!1가^2나,|:[각]:|33 0 9\n;반짝/작은/별--|\n{트랙2}\n#ㅁ,ㅇ-|~*{';

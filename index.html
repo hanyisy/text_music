@@ -3,38 +3,74 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0F1117">
   <title>외계어 악보</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&amp;family=Noto+Sans+KR:wght@400;500;700&amp;family=Noto+Serif+KR:wght@400;700;900&amp;display=swap">
   <link rel="stylesheet" href="./ui/styles.css">
   <script type="module" src="./ui/main.js"></script>
 </head>
 <body>
   <main class="app">
-    <h1 class="app__title">외계어 악보</h1>
+    <header class="header">
+      <div class="header__row">
+        <h1 class="header__title">외계어 악보</h1>
+        <span class="badge">PROTOTYPE 1</span>
+      </div>
+      <p class="header__lead">치면 소리가 나고, 찍힌 글자를 그대로 따라 치면 같은 곡이 나와요.</p>
+    </header>
 
-    <div class="editor">
-      <div class="editor__backdrop" id="score-backdrop" aria-hidden="true"></div>
-      <textarea class="editor__input" id="score" rows="3"
-        placeholder="아무 키나 쳐보세요" aria-label="악보"
+    <p class="notice notice--accent" id="notice-link" role="status" hidden></p>
+    <p class="notice" id="notice-ios" hidden>소리가 안 나면 아이폰 옆면의 무음 모드를 확인해주세요.</p>
+
+    <section class="score" aria-label="괴문자 악보">
+      <div class="score__title" id="score-title" hidden></div>
+      <div class="score__empty" id="score-empty">
+        <div class="score__ghost" aria-hidden="true">쀎</div>
+        <p class="score__hint">아무 키나 쳐보세요. 한글도, 영문도 괜찮아요.</p>
+      </div>
+      <div id="score-lines"></div>
+    </section>
+
+    <div class="field">
+      <label class="field__label" for="score-input">여기를 누르고 치기</label>
+      <textarea class="textarea" id="score-input" rows="4"
+        placeholder="예: 쀎, 가나다, dkssud"
         autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
     </div>
 
     <div class="controls">
       <button class="button button--primary" id="play" type="button">
-        &#9654;
-        <span data-label="play">재생</span>
-        <span data-label="listen" hidden>들어보기</span>
+        <svg class="button__icon" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9.5-5.5z" fill="currentColor"></path></svg>
+        들어보기
       </button>
-      <button class="button button--primary" id="stop" type="button" hidden>&#9632; 정지</button>
-      <button class="button" id="copy-score" type="button">악보 복사</button>
-      <button class="button" id="copy-link" type="button">링크 복사</button>
+      <button class="button button--primary" id="stop" type="button" hidden>
+        <svg class="button__icon" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2.5" width="9" height="9" rx="1" fill="currentColor"></rect></svg>
+        정지
+      </button>
+      <span class="stats" id="stats"></span>
+      <div class="controls__group">
+        <button class="button" id="copy-score" type="button">텍스트 복사</button>
+        <button class="button" id="copy-link" type="button">공유 링크</button>
+        <button class="button" id="example" type="button">예시: 작은별</button>
+        <button class="button" id="clear" type="button">지우기</button>
+      </div>
     </div>
 
-    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <section class="share" id="share" aria-label="공유" hidden>
+      <div class="share__head">
+        <strong class="share__label" id="share-label"></strong>
+        <button class="button button--chip" id="share-close" type="button">닫기</button>
+      </div>
+      <p class="share__message" id="share-message" role="status"></p>
+      <textarea class="textarea textarea--small" id="share-value" rows="3" readonly aria-label="공유할 내용"></textarea>
+    </section>
 
-    <ul class="notices">
-      <li id="notice-ios" hidden>소리가 안 나면 무음 모드를 확인해주세요.</li>
-      <li id="notice-keyboard" hidden>쿼티(두벌식) 자판으로 쳐주세요. 천지인 자판은 음이 틀어져요.</li>
-    </ul>
+    <footer class="footer">
+      <p>모바일은 쿼티(두벌식) 자판에서 동작해요. 천지인은 치는 중에 자모가 바뀌어서 음이 틀어져요.</p>
+      <p>블루투스 이어폰은 기기 자체 지연이 있어요. 유선 이어폰이나 스피커를 권장해요.</p>
+    </footer>
   </main>
 </body>
 </html>

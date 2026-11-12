@@ -131,12 +131,16 @@ export function tokenize(text) {
 
 /**
  * @param {string} text 악보 텍스트
- * @returns {{ tempo: number, duration: number, events: NoteEvent[], segments: Segment[] }}
+ * @returns {{ tempo: number, title: string, glyphCount: number, duration: number,
+ *             events: NoteEvent[], segments: Segment[] }}
+ *          title은 첫 제목 메타 칸(없으면 빈 문자열), glyphCount는 음을 내는 글자 수.
  */
 export function parse(text) {
   const events = [];
   const segments = [];
   let tempo = DEFAULT_TEMPO;
+  let title = '';
+  let glyphCount = 0;
   let time = 0;
   let timed = false;      // 시간을 차지하는 토큰이 이미 나왔는지
   let sustain = null;     // '-'가 늘일 대상(직전 글자의 마지막 음). 쉼표 뒤에는 없음.
@@ -150,12 +154,15 @@ export function parse(text) {
         const { meta } = token;
         if (meta.kind === 'tempo' && !timed && meta.tempo >= TEMPO_MIN && meta.tempo <= TEMPO_MAX) {
           tempo = meta.tempo;
+        } else if (meta.kind === 'title' && !title) {
+          title = meta.title;
         }
         break;
       }
 
       case TOKEN.GLYPH: {
         const step = beat / token.jamo.length;
+        glyphCount++;
         sustain = null;
         token.jamo.forEach((jamo, index) => {
           const sound = jamoToSound(jamo);
@@ -197,5 +204,5 @@ export function parse(text) {
     }
   }
 
-  return { tempo, duration: time, events, segments };
+  return { tempo, title, glyphCount, duration: time, events, segments };
 }

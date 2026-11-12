@@ -1,23 +1,26 @@
-// 화면 조립: 입력창 ↔ 엔진 ↔ 오디오를 잇는다.
+// 화면 조립: 입력창 ↔ 엔진 ↔ 오디오 ↔ 악보 표시를 잇는다.
 
 import { parse } from '../engine/parser.js';
 import { jamoToSound } from '../engine/keymap.js';
-import { textToJamo } from '../engine/hangul.js';
 import { Synth } from '../audio/synth.js';
 import { Player } from '../audio/player.js';
 import { Editor } from './editor.js';
+import { ScoreView } from './score-view.js';
 import { copyText } from './clipboard.js';
-import { isIOS, isTouchDevice } from './platform.js';
+import { isIOS } from './platform.js';
 import { LONG_LINK_LENGTH, buildLink, decode, encodePlain, encodeShortest, readHashCode } from './share.js';
 import { EVENT, track } from './track.js';
+
+// 저작권이 끝난 동요. 자음(반주, 한 옥타브 아래) + 모음(멜로디)으로 한 글자가 8분음표 둘.
+const EXAMPLE = '{작은별}{100}\n모모휴휴|쿠쿠휴-|리리아아|너너모-|\n휴휴리리|아아너-|휴휴리리|아아너-|\n모모휴휴|쿠쿠휴-|리리아아|너너모-|';
 
 const $ = (id) => document.getElementById(id);
 const playButton = $('play');
 const stopButton = $('stop');
-const statusLine = $('status');
 
 const synth = new Synth();
 const player = new Player(synth);
+const scoreView = new ScoreView({ lines: $('score-lines'), empty: $('score-empty'), title: $('score-title') });
 
 // ── 소리 켜기 ───────────────────────────────────────────
 // AudioContext는 사용자 동작 안에서 resume()해야 한다. 전화·탭 전환 뒤 다시 멈출 수 있어 계속 걸어둔다.
@@ -25,55 +28,40 @@ for (const type of ['pointerdown', 'touchend', 'keydown']) {
   addEventListener(type, () => synth.unlock(), { capture: true, passive: true });
 }
 
-// ── 상태 안내 ───────────────────────────────────────────
-let statusTimer = null;
-function say(message, keep = false) {
-  clearTimeout(statusTimer);
-  statusLine.textContent = message;
-  if (!keep) statusTimer = setTimeout(() => { statusLine.textContent = ''; }, 4000);
-}
-
 // ── 입력창 ──────────────────────────────────────────────
-let hasNotes = false;
+let score = parse('');
 
 const editor = new Editor({
-  input: $('score'),
-  backdrop: $('score-backdrop'),
-  onJamo(jamo) {
-    for (const one of jamo) synth.play(jamoToSound(one));
-  },
+  input: $('score-input'),
   onChange(text) {
+    const hadNotes = score.events.length > 0;
     player.stop();
-    setPlayLabel('play');
+    score = parse(text);
+    scoreView.render(text, score.title);
+    $('stats').textContent = score.glyphCount
+      ? `음 ${score.events.length}개 · ${score.glyphCount}글자 · ${score.tempo} BPM`
+      : `${score.tempo} BPM`;
     refreshLink(text);
-
-    const nowHasNotes = textToJamo(text).length > 0;
-    if (nowHasNotes && !hasNotes) track(EVENT.SCORE_CREATE);
-    hasNotes = nowHasNotes;
+    if (!hadNotes && score.events.length > 0 && !loading) track(EVENT.SCORE_CREATE);
+  },
+  onJamo(jamo, caret) {
+    for (const one of jamo) synth.play(jamoToSound(one));
+    scoreView.flash(caret - 1);
+    $('notice-link').hidden = true;
   },
 });
 
 // ── 재생 ────────────────────────────────────────────────
-function setPlayLabel(name) {
-  for (const label of playButton.querySelectorAll('[data-label]')) {
-    label.hidden = label.dataset.label !== name;
-  }
-}
-
 function setPlaying(playing) {
   playButton.hidden = playing;
   stopButton.hidden = !playing;
 }
 
 function play() {
-  const score = parse(editor.text);
-  if (!score.events.length) {
-    say('먼저 아무 키나 쳐보세요.');
-    return;
-  }
+  if (!score.events.length) return;
   setPlaying(true);
   player.play(score, {
-    onSegment: (segment) => editor.setHighlight(segment),
+    onSegment: (segment) => scoreView.setActive(segment),
     onEnd: () => setPlaying(false),
   });
 }
@@ -91,15 +79,25 @@ function refreshLink(text) {
   }, 200);
 }
 
+function showShare(label, value, message) {
+  $('share-label').textContent = label;
+  $('share-message').textContent = message;
+  $('share-value').value = value;
+  $('share').hidden = false;
+}
+
 async function copyScore() {
   const text = editor.text;
-  if (!text) return say('복사할 악보가 아직 없어요.');
-  say(await copyText(text) ? '악보를 복사했어요.' : '복사하지 못했어요. 직접 선택해서 복사해주세요.');
+  if (!text) return;
+  const copied = await copyText(text);
+  showShare('악보 텍스트', text, copied
+    ? '클립보드에 복사됐어요.'
+    : '브라우저가 복사를 막았어요. 아래 칸을 눌러 직접 복사해주세요.');
 }
 
 async function copyLink() {
   const text = editor.text;
-  if (!text) return say('공유할 악보가 아직 없어요.');
+  if (!text) return;
 
   const code = shortest.text === text ? shortest.code : encodePlain(text);
   const link = buildLink(code);
@@ -107,29 +105,37 @@ async function copyLink() {
   history.replaceState(null, '', link);
   track(EVENT.LINK_CREATE, { length: link.length });
 
-  if (!copied) {
-    say('복사하지 못했어요. 주소창의 주소를 복사해주세요.', true);
-  } else if (link.length > LONG_LINK_LENGTH) {
-    say(`링크를 복사했어요. 다만 링크가 길어서(${link.length}자) 일부 메신저에서 잘릴 수 있어요. 그럴 땐 '악보 복사'를 써주세요.`, true);
-  } else {
-    say('링크를 복사했어요.');
+  let message = copied
+    ? '클립보드에 복사됐어요.'
+    : '브라우저가 복사를 막았어요. 아래 칸을 눌러 직접 복사해주세요.';
+  if (link.length > LONG_LINK_LENGTH) {
+    message += ` 링크가 길어서(${link.length}자) 일부 메신저에서 잘릴 수 있어요. 그럴 땐 텍스트 복사를 써주세요.`;
   }
+  showShare('공유 링크', link, message);
+}
+
+let loading = false;    // 불러온 악보는 "악보 생성"으로 세지 않는다
+
+function load(text) {
+  loading = true;
+  editor.setText(text);
+  loading = false;
 }
 
 async function loadFromHash() {
   const code = readHashCode();
   if (!code) return;
+  const notice = $('notice-link');
   try {
     const text = await decode(code);
-    player.stop();
-    editor.setText(text);
-    hasNotes = textToJamo(text).length > 0;
+    load(text);
     shortest = { text, code };
-    setPlayLabel('listen');
+    notice.textContent = '공유받은 악보예요. 아래 들어보기를 누르면 재생돼요.';
     track(EVENT.LINK_OPEN);
   } catch {
-    say('링크의 악보를 읽지 못했어요. 링크가 중간에 잘렸을 수 있어요.', true);
+    notice.textContent = '링크의 악보를 읽지 못했어요. 링크가 중간에 잘렸을 수 있어요.';
   }
+  notice.hidden = false;
 }
 
 // ── 버튼 ────────────────────────────────────────────────
@@ -144,10 +150,21 @@ bindButton(playButton, play);
 bindButton(stopButton, () => player.stop());
 bindButton($('copy-score'), copyScore);
 bindButton($('copy-link'), copyLink);
+bindButton($('example'), () => {
+  load(EXAMPLE);
+  $('notice-link').hidden = true;
+});
+bindButton($('clear'), () => {
+  load('');
+  $('share').hidden = true;
+  $('notice-link').hidden = true;
+});
+bindButton($('share-close'), () => { $('share').hidden = true; });
+$('share-value').addEventListener('focus', (event) => event.target.select());
 
 // ── 기기별 안내 ─────────────────────────────────────────
 $('notice-ios').hidden = !isIOS();
-$('notice-keyboard').hidden = !isTouchDevice();
 
 addEventListener('hashchange', loadFromHash);
+editor.setText('');
 loadFromHash();

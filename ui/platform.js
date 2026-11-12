@@ -5,8 +5,3 @@ export function isIOS() {
   const { userAgent, platform, maxTouchPoints } = navigator;
   return /iPhone|iPad|iPod/.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1);
 }
-
-/** 화면 키보드를 쓰는 기기 */
-export function isTouchDevice() {
-  return matchMedia('(pointer: coarse)').matches;
-}
