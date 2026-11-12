@@ -1,12 +1,14 @@
 // 화면 조립: 입력창 ↔ 엔진 ↔ 오디오 ↔ 악보 표시를 잇는다.
 
 import { parse, withTempo } from '../engine/parser.js';
+import { scoreLineAt, setLyricLine } from '../engine/lyric-fill.js';
 import { jamoToSound } from '../engine/keymap.js';
 import { Synth } from '../audio/synth.js';
 import { Player } from '../audio/player.js';
 import { Editor } from './editor.js';
 import { ScoreView } from './score-view.js';
 import { KeymapView } from './keymap-view.js';
+import { lyricWarningMessage } from './lyric-messages.js';
 import { copyText } from './clipboard.js';
 import { isIOS } from './platform.js';
 import { LONG_LINK_LENGTH, buildLink, decode, encodePlain, encodeShortest, readHashCode } from './share.js';
@@ -39,7 +41,20 @@ let score = parse('');
 let expanded = false;   // 펼쳐보기
 
 function renderScore() {
-  scoreView.render(editor.text, score.title, { expanded });
+  const text = editor.text;
+  const warnings = score.warnings.map((warning) => ({
+    start: warning.start,
+    message: lyricWarningMessage(warning, text),
+  }));
+  scoreView.render(text, score, { expanded, warnings });
+
+  const list = $('warnings');
+  list.hidden = warnings.length === 0;
+  list.replaceChildren(...warnings.map(({ message }) => {
+    const item = document.createElement('li');
+    item.textContent = message;
+    return item;
+  }));
 }
 
 const editor = new Editor({
@@ -54,6 +69,7 @@ const editor = new Editor({
       ? `음 ${score.events.length}개 · ${score.glyphCount}글자 · ${score.tempo} BPM`
       : `${score.tempo} BPM`;
     refreshLink(text);
+    showLyricTarget();
     if (!hadNotes && score.events.length > 0 && !loading) track(EVENT.SCORE_CREATE);
   },
   onJamo(jamo, caret) {
@@ -75,8 +91,36 @@ function play() {
   setPlaying(true);
   player.play(score, {
     onSegment: (segment) => scoreView.setActive(segment),
+    onEvent: (event) => scoreView.setSinging(event?.lyric ?? null),
     onEnd: () => setPlaying(false),
   });
+}
+
+// ── 가사 넣기 ───────────────────────────────────────────
+// 입력창에서 커서가 있는 악보 줄이 대상. 가사를 쭉 치면 음 하나에 한 음절씩 나눠 그 줄 아래에 넣는다.
+function showLyricTarget() {
+  const target = scoreLineAt(editor.text, editor.caret);
+  $('lyric-target').textContent = target
+    ? `선택한 줄: ${target.text} (음 ${target.notes}개)`
+    : '가사를 붙일 악보 줄에 커서를 두세요.';
+}
+
+function applyLyrics() {
+  const input = $('lyric-input');
+  const status = $('lyric-status');
+  if (!input.value.trim()) return;
+
+  const result = setLyricLine(editor.text, editor.caret, input.value);
+  if (!result.ok) {
+    status.textContent = '가사를 붙일 악보 줄에 커서를 먼저 두세요.';
+    return;
+  }
+  load(result.text, result.caret);
+  input.value = '';
+  const [overflow] = result.warnings;
+  status.textContent = overflow
+    ? `가사를 넣었어요. 음보다 ${overflow.count}음절이 넘쳐서 뺐어요: ${overflow.text}`
+    : '가사를 넣었어요.';
 }
 
 // ── 공유 ────────────────────────────────────────────────
@@ -129,9 +173,9 @@ async function copyLink() {
 
 let loading = false;    // 불러온 악보는 "악보 생성"으로 세지 않는다
 
-function load(text) {
+function load(text, caret) {
   loading = true;
-  editor.setText(text);
+  editor.setText(text, caret);
   loading = false;
 }
 
@@ -188,6 +232,21 @@ bindToggle($('toggle-expand'), (on) => {
   expanded = on;
   renderScore();
 });
+bindToggle($('toggle-lyrics'), (on) => {
+  $('lyrics').hidden = !on;
+  if (on) showLyricTarget();
+});
+bindButton($('lyric-apply'), applyLyrics);
+$('lyric-input').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.isComposing) {
+    event.preventDefault();
+    applyLyrics();
+  }
+});
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement === $('score-input')) showLyricTarget();
+});
+
 bindToggle($('toggle-rules'), (on) => {
   $('rules').hidden = !on;
   $('score').classList.toggle('score--codes', on);

@@ -24,6 +24,7 @@
       <div class="header__actions">
         <button class="button" id="toggle-expand" type="button" aria-pressed="false"
           title="눈 아프면 펼쳐보기 — 괴문자를 자모 단위로 풀어서 보여줘요">펼쳐보기</button>
+        <button class="button" id="toggle-lyrics" type="button" aria-pressed="false">가사 넣기</button>
         <button class="button" id="toggle-rules" type="button" aria-pressed="false">규칙 보기</button>
       </div>
     </header>
@@ -40,12 +41,24 @@
       <div id="score-lines"></div>
     </section>
 
+    <ul class="warnings" id="warnings" aria-label="가사 경고" hidden></ul>
+
     <div class="field">
       <label class="field__label" for="score-input">여기를 누르고 치기</label>
       <textarea class="textarea" id="score-input" rows="4"
         placeholder="예: 쀎, 가나다, dkssud"
         autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
     </div>
+
+    <section class="field" id="lyrics" aria-label="가사 넣기" hidden>
+      <label class="field__label" for="lyric-input">가사 넣기 &mdash; 위 입력창에서 악보 줄에 커서를 두고, 가사를 쭉 입력하세요. 음 하나에 한 음절씩 나눠서 그 줄 아래에 넣어요.</label>
+      <div class="field__row">
+        <input class="input" id="lyric-input" type="text" placeholder="예: 반짝반짝작은별" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="button" id="lyric-apply" type="button">가사 넣기</button>
+      </div>
+      <p class="field__note" id="lyric-target"></p>
+      <p class="field__note" id="lyric-status" role="status"></p>
+    </section>
 
     <div class="controls">
       <button class="button button--primary" id="play" type="button">
@@ -97,6 +110,8 @@
         <div class="cheats__item"><dt>|</dt><dd>마디 (보기용)</dd></div>
         <div class="cheats__item"><dt>{120}</dt><dd>맨 앞: 템포</dd></div>
         <div class="cheats__item"><dt>{작은별}</dt><dd>곡 제목</dd></div>
+        <div class="cheats__item"><dt>;반짝/작은</dt><dd>악보 줄 바로 아래: 가사 줄. / 한 칸이 괴문자 한 글자</dd></div>
+        <div class="cheats__item"><dt>별--</dt><dd>가사 줄의 -: 앞 음절을 이어 불러요</dd></div>
         <div class="cheats__item"><dt>가 &rarr; ㄱㅏ</dt><dd>한 글자 안의 음은 박을 똑같이 나눠요</dd></div>
       </dl>
     </section>

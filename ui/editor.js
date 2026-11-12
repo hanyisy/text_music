@@ -42,9 +42,19 @@ export class Editor {
     return this.#input.value;
   }
 
-  /** 소리 없이 내용을 바꾼다(링크로 불러오기, 예시, 지우기). */
-  setText(text) {
+  /** 입력창의 커서 위치(포커스가 다른 곳에 있어도 마지막 위치를 기억한다). */
+  get caret() {
+    return this.#input.selectionStart;
+  }
+
+  /**
+   * 소리 없이 내용을 바꾼다(링크로 불러오기, 예시, 지우기, 가사 넣기).
+   * @param {string} text
+   * @param {number} [caret]  바꾼 뒤 커서를 둘 위치
+   */
+  setText(text, caret) {
     this.#input.value = convertLatin(text).text;
+    if (caret !== undefined) this.#input.setSelectionRange(caret, caret);
     this.#lastText = this.#input.value;
     this.#composeEnd = -1;
     this.#tracker.reset(this.#lastText);

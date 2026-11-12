@@ -1,10 +1,12 @@
 // 악보 텍스트 → 음 이벤트 목록.
 // 1) tokenize: DESIGN.md 표기 규칙 전체를 토큰으로 나눈다.
 // 2) parse: 토큰을 시간 순 이벤트로 바꾼다. 아직 구현하지 않은 토큰은 건너뛴다.
+//    가사 줄은 연주하지 않고, 바로 위 악보 줄의 음 이벤트에 가사를 붙인다.
 // 새 표기를 구현할 때는 parse의 switch에 해당 토큰 처리만 추가하면 된다.
 
 import { charToJamo, isHangul } from './hangul.js';
 import { jamoToSound } from './keymap.js';
+import { alignLyricCells, parseLyricCells } from './lyrics.js';
 
 export const DEFAULT_TEMPO = 120;
 const TEMPO_MIN = 20;
@@ -148,6 +150,7 @@ export function withTempo(text, tempo) {
  * @property {object} sound     keymap.jamoToSound 결과 ({type:'note', midi, voice} | {type:'perc', name})
  * @property {number} start     원문에서 이 음이 속한 글자의 시작 위치
  * @property {number} end       원문 끝 위치(제외)
+ * @property {import('./lyrics.js').NoteLyric|null} lyric  이 음에 붙은 가사(1절). 없으면 null
  *
  * @typedef {object} Segment    재생 위치 표시용: 시간을 차지하는 원문 글자 하나
  * @property {'glyph'|'rest'|'tie'} type
@@ -160,8 +163,12 @@ export function withTempo(text, tempo) {
 /**
  * @param {string} text 악보 텍스트
  * @returns {{ tempo: number, title: string, glyphCount: number, duration: number,
- *             events: NoteEvent[], segments: Segment[] }}
+ *             events: NoteEvent[], segments: Segment[], tokens: object[],
+ *             lyrics: object[], warnings: import('./lyrics.js').LyricWarning[] }}
  *          title은 첫 제목 메타 칸(없으면 빈 문자열), glyphCount는 음을 내는 글자 수.
+ *          lyrics는 가사 줄마다 { start, end, verse, cells }. cells의 glyphStart가 짝지어진 악보 글자.
+ *          같은 악보 줄 아래 가사 줄이 여럿이면 verse 0, 1, 2…(절)이고, 음 이벤트에는 0절만 붙는다.
+ *          warnings는 가사와 악보가 어긋난 곳(재생은 그대로 된다).
  */
 export function parse(text) {
   const events = [];
@@ -173,7 +180,15 @@ export function parse(text) {
   let timed = false;      // 시간을 차지하는 토큰이 이미 나왔는지
   let sustain = null;     // '-'가 늘일 대상(직전 글자의 마지막 음). 쉼표 뒤에는 없음.
 
-  for (const token of tokenize(text)) {
+  // 가사 정렬: 줄 단위로 "이 줄의 글자들"을 모아 두고, 가사 줄이 나오면 바로 위 악보 줄에 붙인다.
+  const lyrics = [];
+  const warnings = [];
+  let line = { glyphs: [], hasContent: false, isLyric: false };
+  let scoreLine = null;   // 가장 최근의 가사 줄이 아닌 줄(빈 줄 제외)
+  let verse = 0;
+  const tokens = tokenize(text);
+
+  for (const token of tokens) {
     const beat = 60 / tempo;
 
     switch (token.type) {
@@ -192,6 +207,7 @@ export function parse(text) {
         const step = beat / token.jamo.length;
         glyphCount++;
         sustain = null;
+        const notes = [];
         token.jamo.forEach((jamo, index) => {
           const sound = jamoToSound(jamo);
           if (!sound) return;
@@ -202,9 +218,12 @@ export function parse(text) {
             sound,
             start: token.start,
             end: token.end,
+            lyric: null,
           };
           events.push(sustain);
+          notes.push(sustain);
         });
+        line.glyphs.push({ start: token.start, end: token.end, notes });
         segments.push({ type: 'glyph', time, duration: beat, start: token.start, end: token.end });
         time += beat;
         timed = true;
@@ -225,12 +244,43 @@ export function parse(text) {
         timed = true;
         break;
 
-      // 시간 없음: 공백, 줄바꿈, 마디선
-      // 아직 구현하지 않음: 옥타브, 악기, 강약, 화음, 반복, 가사 줄, 그 밖의 글자
+      case TOKEN.NEWLINE:
+        if (!line.isLyric && line.hasContent) {
+          scoreLine = line;
+          verse = 0;
+        }
+        line = { glyphs: [], hasContent: false, isLyric: false };
+        break;
+
+      case TOKEN.LYRIC: {
+        line.isLyric = true;
+        const cells = parseLyricCells(token.body, token.start + 1);
+        if (!scoreLine?.glyphs.length) {
+          if (cells.length) {
+            warnings.push({ type: 'no-score-line', count: cells.length, start: token.start, end: token.end });
+          }
+          lyrics.push({ start: token.start, end: token.end, verse, cells: cells.map((c) => ({ ...c, glyphStart: null })) });
+          break;
+        }
+        const aligned = alignLyricCells(cells, scoreLine.glyphs.map((g) => ({ start: g.start, end: g.end, notes: g.notes.length })));
+        if (verse === 0) {
+          scoreLine.glyphs.forEach((glyph, i) => {
+            glyph.notes.forEach((event, j) => { event.lyric = aligned.notes[i][j]; });
+          });
+        }
+        lyrics.push({ start: token.start, end: token.end, verse, cells: aligned.cells });
+        warnings.push(...aligned.warnings);
+        verse++;
+        break;
+      }
+
+      // 시간 없음: 공백, 마디선
+      // 아직 구현하지 않음: 옥타브, 악기, 강약, 화음, 반복, 그 밖의 글자
       default:
         break;
     }
+    if (token.type !== TOKEN.SPACE && token.type !== TOKEN.NEWLINE) line.hasContent = true;
   }
 
-  return { tempo, title, glyphCount, duration: time, events, segments };
+  return { tempo, title, glyphCount, duration: time, events, segments, tokens, lyrics, warnings };
 }

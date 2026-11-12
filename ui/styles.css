@@ -26,6 +26,8 @@
   --color-notice-accent-bg: #1A1810;
   --color-notice-accent-border: #3A3420;
   --color-notice-accent-text: #FFE587;
+  --color-warning: #FF9F5A;            /* 가사가 어긋난 곳 */
+  --color-on-warning: #15130A;
 
   /* 글꼴 */
   --font-sans: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
@@ -85,7 +87,8 @@
   --keymap-label-width: 4rem;
   --keymap-extra-key-width: 6rem;
   --tempo-value-width: 4.75rem;
-  --cheat-key-width: 3.5rem;
+  --cheat-key-width: 5.5rem;
+  --warning-mark-size: 0.875rem;
   --cheat-column-min: 12.5rem;
 
   /* 움직임 */
@@ -362,14 +365,119 @@ p {
   vertical-align: 0.3em;
 }
 
-.tok-lyric {
-  display: block;
+/* ── 가사 ───────────────────────────────────────────── */
+.score__line--lyric {
   color: var(--color-text-muted);
   font-family: var(--font-sans);
   font-size: var(--font-size-lyric);
   font-weight: var(--font-weight-regular);
   letter-spacing: 0.02em;
   line-height: var(--line-height-base);
+}
+
+.lyric-sep {
+  padding: 0 var(--space-1);
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+}
+
+.lyric-cell,
+.lyric-syl {
+  display: inline-block;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-highlight);
+}
+
+.lyric-cell {
+  padding: 0 var(--space-1);
+}
+
+.lyric-syl--extend {
+  color: var(--color-text-faint);
+}
+
+/* 지금 부르는 음절 */
+.lyric-syl.is-sung {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+/* 글자에 마우스를 올리거나 탭했을 때: 붙은 가사 칸과 음 개수 */
+.tok--note {
+  position: relative;
+  cursor: pointer;
+}
+
+.tok--note.is-picked {
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border);
+}
+
+.tok--note.is-picked::before {
+  content: '음 ' attr(data-notes);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.lyric-cell.is-linked {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+  box-shadow: 0 0 0 var(--border-width) var(--color-accent);
+}
+
+/* 가사가 어긋난 곳: 색만으로 구분하지 않게 물결 밑줄과 ! 표시를 같이 쓴다 */
+.has-warning {
+  text-decoration: underline wavy var(--color-warning);
+  text-decoration-thickness: var(--border-width);
+  text-underline-offset: 0.2em;
+}
+
+.tok.has-warning::after,
+.lyric-cell.has-warning::after {
+  content: '!';
+  display: inline-block;
+  width: var(--warning-mark-size);
+  height: var(--warning-mark-size);
+  margin-left: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-warning);
+  color: var(--color-on-warning);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0;
+  line-height: var(--warning-mark-size);
+  text-align: center;
+  vertical-align: super;
+}
+
+.warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-warning);
+  font-size: var(--font-size-small);
+  list-style: none;
+}
+
+.warnings li::before {
+  content: '! ';
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-bold);
 }
 
 /* ── 입력창 ─────────────────────────────────────────── */
@@ -382,6 +490,43 @@ p {
 .field__label {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
+}
+
+.field__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.field__note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.field__note:empty {
+  display: none;
+}
+
+.input {
+  flex: 1 1 var(--cheat-column-min);
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-hint);    /* 16px 미만이면 아이폰이 입력 시 화면을 확대한다 */
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.input::placeholder {
+  color: var(--color-text-faint);
 }
 
 .textarea {

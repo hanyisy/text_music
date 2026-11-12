@@ -5,6 +5,8 @@ import { charToJamo, textToJamo, composeJamo, convertLatin } from '../engine/han
 import { jamoToSound, KEY_LAYOUT } from '../engine/keymap.js';
 import { addedJamo, JamoTracker } from '../engine/diff.js';
 import { parse, tokenize, withTempo, TOKEN } from '../engine/parser.js';
+import { parseLyricCells } from '../engine/lyrics.js';
+import { distributeLyrics, scoreLineAt, setLyricLine } from '../engine/lyric-fill.js';
 
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} ≉ ${expected}`);
 
@@ -220,4 +222,104 @@ test('tokenize: 표기 규칙 전체를 토큰으로', () => {
     ['120', '120:8', '4/4', '트랙2:4', '작은별'].map((body) => tokenize(`{${body}}`)[0].meta.kind),
     ['tempo', 'tempoUnit', 'timeSignature', 'track', 'title'],
   );
+});
+
+// ── 가사 ────────────────────────────────────────────────
+
+const sung = (score) => score.events.map((e) => (e.lyric ? (e.lyric.type === 'extend' ? '-' : e.lyric.text) : '.')).join('');
+
+test('가사: "가나,각" + ";반짝/작은/별--"', () => {
+  const score = parse('가나,각\n;반짝/작은/별--');
+  assert.deepEqual(score.events.map((e) => e.jamo), ['ㄱ', 'ㅏ', 'ㄴ', 'ㅏ', 'ㄱ', 'ㅏ', 'ㄱ']);
+  assert.equal(sung(score), '반짝작은별--');
+  assert.deepEqual(score.warnings, []);
+  near(score.duration, 2); // 가사 줄은 연주하지 않는다
+
+  // 음절은 원문 위치를, 연장은 이어 부르는 음절을 안다
+  assert.deepEqual(score.events[0].lyric, { type: 'syllable', text: '반', start: 6, end: 7 });
+  assert.deepEqual(score.events[5].lyric, { type: 'extend', text: '별', start: 13, end: 14 });
+  assert.deepEqual(score.lyrics[0].cells.map((c) => c.glyphStart), [0, 1, 3]);
+});
+
+test('가사: 칸이 하나 모자라면 경고 1개, 나머지는 정상 정렬', () => {
+  const score = parse('가나,각\n;반짝/작은');
+  assert.equal(sung(score), '반짝작은...');
+  assert.deepEqual(score.warnings, [{ type: 'cells-missing', count: 1, start: 3, end: 4 }]);
+});
+
+test('가사: 칸이 남거나 음절 수가 안 맞아도 멈추지 않고 경고', () => {
+  const extra = parse('가나\n;반짝/작은/별');
+  assert.equal(sung(extra), '반짝작은');
+  assert.deepEqual(extra.warnings.map((w) => [w.type, w.count]), [['cells-extra', 1]]);
+
+  // 음절이 모자라면 앞 음절을 이어 부르고, 넘치면 버린다
+  const uneven = parse('각나\n;별/작은별');
+  assert.equal(sung(uneven), '별--작은');
+  assert.deepEqual(uneven.warnings, [
+    { type: 'syllables-missing', count: 2, start: 0, end: 1 },
+    { type: 'syllables-extra', count: 1, start: 1, end: 2 },
+  ]);
+  assert.equal(uneven.events[1].lyric.start, null);
+});
+
+test('가사: 마디선·빈 칸·늘임표', () => {
+  // | 는 칸을 나누지만 빈 칸을 만들지 않는다
+  for (const lyric of [';반짝/작은|별--|', ';반짝/작은/|별--|', ';|반짝/작은|/별--']) {
+    const score = parse(`가나|각|\n${lyric}`);
+    assert.equal(sung(score), '반짝작은별--', lyric);
+    assert.deepEqual(score.warnings, [], lyric);
+  }
+  // // = 가사 없는 글자, 악보의 - 는 음이 아니라 칸이 없다, 칸 안의 공백은 보기용
+  const score = parse('가나-다\n;반 짝//별-');
+  assert.equal(sung(score), '반짝..별-');
+  assert.deepEqual(score.warnings, []);
+  assert.deepEqual(parseLyricCells('').length, 0);
+  assert.deepEqual(parseLyricCells('가/').length, 1);
+});
+
+test('가사: 줄 짝짓기 — 바로 위 악보 줄, 여러 절, 악보 없는 가사 줄', () => {
+  const score = parse('{작은별}\n가나\n;반짝/작은\n;별별/달달\n\n다\n;해-');
+  assert.equal(sung(score), '반짝작은해-');
+  assert.deepEqual(score.lyrics.map((l) => l.verse), [0, 1, 0]);
+  assert.deepEqual(score.warnings, []);
+
+  const orphan = parse(';반짝\n가');
+  assert.equal(sung(orphan), '..');
+  assert.deepEqual(orphan.warnings.map((w) => [w.type, w.start]), [['no-score-line', 0]]);
+  assert.equal(parse('{작은별}\n;반짝').warnings[0].type, 'no-score-line');
+});
+
+test('자동 분배: "가나,각" + "반짝작은별" → ";반짝/작은/별--"', () => {
+  assert.deepEqual(distributeLyrics('가나,각', '반짝작은별'), { line: ';반짝/작은/별--', used: 5, warnings: [] });
+  assert.equal(distributeLyrics('가나,각', '반짝 작은 별').line, ';반짝/작은/별--');
+});
+
+test('자동 분배: 음절이 2개 넘치면 경고에 2개', () => {
+  // 음 7개에 음절 9개
+  const result = distributeLyrics('가나,각', '반짝반짝작은별이야');
+  assert.equal(result.line, ';반짝/반짝/작은별');
+  assert.deepEqual(result.warnings, [{ type: 'syllables-extra', count: 2, text: '이야' }]);
+});
+
+test('자동 분배: 마디선을 따라 적고, 가사가 모자라면 채운 데까지만', () => {
+  assert.equal(distributeLyrics('|가나|각-|', '반짝작은별').line, ';|반짝/작은|별--|');
+  assert.equal(distributeLyrics('가나|각', '반짝작').line, ';반짝/작-');
+  assert.equal(distributeLyrics('!1가^2나', '반짝작은').line, ';반짝/작은');
+  // 만든 줄은 다시 읽어도 어긋나지 않는다
+  assert.deepEqual(parse('|가나|각-|\n;|반짝/작은|별--|').warnings, []);
+});
+
+test('가사 넣기: 커서가 있는 악보 줄 아래에 넣거나 바꾼다', () => {
+  const text = '{작은별}\n가나,각\n다라';
+  assert.equal(scoreLineAt(text, 0), null);
+  assert.deepEqual(scoreLineAt(text, 8), { index: 1, text: '가나,각', glyphs: 3, notes: 7 });
+
+  const added = setLyricLine(text, 8, '반짝작은별');
+  assert.equal(added.text, '{작은별}\n가나,각\n;반짝/작은/별--\n다라');
+  assert.equal(added.text.slice(0, added.caret), '{작은별}\n가나,각\n;반짝/작은/별--');
+
+  // 가사 줄에 커서가 있어도 그 위 악보 줄의 가사를 바꾼다
+  const replaced = setLyricLine(added.text, added.caret, '별별달달해');
+  assert.equal(replaced.text, '{작은별}\n가나,각\n;별별/달달/해--\n다라');
+  assert.equal(setLyricLine(text, 0, '반짝').ok, false);
 });

@@ -12,6 +12,7 @@ export class Player {
   #timer = null;
   #frame = null;
   #onSegment = null;
+  #onEvent = null;
   #onEnd = null;
 
   constructor(synth) {
@@ -26,9 +27,10 @@ export class Player {
    * @param {{ events: object[], segments: object[], duration: number }} score  parser.parse 결과
    * @param {object} [callbacks]
    * @param {(segment: object | null) => void} [callbacks.onSegment]  지금 재생 중인 글자가 바뀔 때(끝나면 null)
+   * @param {(event: object | null) => void} [callbacks.onEvent]      지금 울리는 음이 바뀔 때(끝나면 null)
    * @param {() => void} [callbacks.onEnd]                            끝까지 재생했거나 정지했을 때
    */
-  async play(score, { onSegment, onEnd } = {}) {
+  async play(score, { onSegment, onEvent, onEnd } = {}) {
     this.stop();
     const run = ++this.#run;
     await this.#synth.unlock();
@@ -39,6 +41,8 @@ export class Player {
     const startAt = ctx.currentTime + START_DELAY;
     let nextEvent = 0;
     let segmentIndex = -1;
+    let eventIndex = -1;
+    let sounding = null;
 
     const schedule = () => {
       const horizon = ctx.currentTime - startAt + LOOKAHEAD;
@@ -61,10 +65,19 @@ export class Player {
         segmentIndex = index;
         onSegment?.(segments[index] ?? null);
       }
+      while (eventIndex + 1 < events.length && events[eventIndex + 1].time <= position) eventIndex++;
+      // 음이 끝나고 다음 음이 아직이면(쉼표) 울리는 음이 없는 것
+      const latest = events[eventIndex];
+      const current = latest && position < latest.time + latest.duration ? latest : null;
+      if (current !== sounding) {
+        sounding = current;
+        onEvent?.(current);
+      }
       this.#frame = requestAnimationFrame(follow);
     };
 
     this.#onSegment = onSegment ?? null;
+    this.#onEvent = onEvent ?? null;
     this.#onEnd = onEnd ?? null;
     this.#timer = setInterval(schedule, TICK_MS);
     schedule();
@@ -83,9 +96,11 @@ export class Player {
     this.#frame = null;
     if (silence) this.#synth.stopAll();
     const onSegment = this.#onSegment;
+    const onEvent = this.#onEvent;
     const onEnd = this.#onEnd;
-    this.#onSegment = this.#onEnd = null;
+    this.#onSegment = this.#onEvent = this.#onEnd = null;
     onSegment?.(null);
+    onEvent?.(null);
     onEnd?.();
   }
 }
