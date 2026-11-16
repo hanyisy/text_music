@@ -24,3 +24,7 @@ npm test
 | `tests/` | 엔진 단위 테스트 (`node --test`) |
 
 음 배치는 `engine/keymap.js`, 디자인 값(색·간격·글꼴)은 `ui/styles.css` 맨 위의 CSS 변수에서 바꾼다.
+
+## 같은 저장소의 다른 프로젝트
+
+`context-atlas/` — 언어·문화 맥락 사전 웹앱(별개 프로젝트, 자체 Node 서버). [context-atlas/README.md](./context-atlas/README.md) 참고.
