@@ -1,3 +1,0 @@
-# robots.txt 는 이용 요청이며 차단 장치가 아니다. 비공개 데이터는 서버 권한 검사로 보호한다.
-User-agent: *
-Disallow: /api/
